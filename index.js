@@ -32,7 +32,41 @@ function findImageUrl(value) {
 
 const itemCatalogUrl = 'https://raw.githubusercontent.com/WFCD/warframe-items/refs/heads/master/data/json/All.json';
 const itemImageBaseUrl = 'https://raw.githubusercontent.com/wfcd/warframe-items/master/data/img/';
+const warframeApiProxyUrl = 'https://proxy.corsfix.com/?url=';
+const warframeApiProxyKey = process.env.WARFRAME_API_PROXY_KEY || '';
 let itemCatalogCache = null;
+
+async function fetchWarframeApi(targetUrl, options = {}) {
+	const directUrl = new URL(targetUrl);
+	const headers = { ...(options.headers || {}) };
+
+	try {
+		const directResponse = await fetch(directUrl.toString(), {
+			...options,
+			headers,
+		});
+		if (directResponse.ok) return directResponse;
+	} catch (error) {
+		console.warn('Direct Warframe API fetch failed, retrying with CORS proxy:', error.message);
+	}
+
+	const proxyUrl = new URL(warframeApiProxyUrl + encodeURIComponent(directUrl.toString()));
+	const proxyResponse = await fetch(proxyUrl.toString(), {
+		...options,
+		headers: {
+			...headers,
+			'x-corsfix-key': warframeApiProxyKey,
+			'x-forwarded-host': directUrl.host,
+			'x-forwarded-proto': directUrl.protocol.replace(':', ''),
+		},
+	});
+
+	if (!proxyResponse.ok) {
+		throw new Error(`Warframe API fetch failed via direct and proxy routes (${proxyResponse.status})`);
+	}
+
+	return proxyResponse;
+}
 
 async function fetchWarframeItems() {
 	if (itemCatalogCache) return itemCatalogCache;
@@ -44,17 +78,6 @@ async function fetchWarframeItems() {
 	if (!response.ok) {
 		throw new Error(`Warframe item catalog request failed: ${response.status}`);
 	}
-
-	itemCatalogCache = await response.json();
-	return itemCatalogCache;
-}
-
-async function fetchWarframeItems() {
-	if (itemCatalogCache) return itemCatalogCache;
-
-	const response = await fetchWithProxyFallback(itemCatalogUrl, {
-		headers: { accept: 'application/json', 'user-agent': 'warframe-loadout-proxy/1.0' },
-	});
 
 	itemCatalogCache = await response.json();
 	return itemCatalogCache;
@@ -267,27 +290,14 @@ app.get('/loadout', async (request, reply) => {
 
 	let profileResponse;
 	try {
-		profileResponse = await fetch(url, {
+		profileResponse = await fetchWarframeApi(url.toString(), {
 			headers: { accept: 'application/json', 'user-agent': 'warframe-loadout-proxy/1.0' },
 		});
-        // profileResponse = await fetch(url);
-        // const url = 'https://api.warframe.com/cdn/getProfileViewingData.php?playerId=5b34dfeaf2f2eb06a02d1fd2';
-        // const options = {method: 'GET'};
-
-        // try {
-        //     // const response = await fetch(url, options);
-        //     // const data = await response.json();
-        //     // console.log(data);
-        //     profileResponse = await fetch(url, options);
-        // } catch (error) {
-        //     console.error(error);   
-        // }
 	} catch (error) {
 		return reply.code(502).send({ error: 'Could not reach the Warframe profile API', message: error.message });
 	}
 
 	if (!profileResponse.ok) {
-        console.log(profileResponse);
 		return reply.code(502).send({
 			error: 'Warframe profile API returned an error',
 			status: profileResponse.status,
@@ -296,9 +306,7 @@ app.get('/loadout', async (request, reply) => {
 
 	let profile;
 	try {
-		console.log(profileResponse);
 		profile = await profileResponse.json();
-		console.log(profile);
 	} catch {
 		return reply.code(502).send({ error: 'Warframe profile API returned invalid JSON' });
 	}
@@ -343,49 +351,53 @@ if (require.main === module) {
 
 let lastLoadoutHash = null;
 
-cron.schedule('*/5 * * * *', () => {
-// 	console.log('Checking for loadout updates...');
-//   //check if loadout is have been updated from the last time, if yes then update it
-//   if (lastLoadoutHash !== null) {
-// 	fetch(profileUrl)
-// 	  .then((response) => response.json())
-// 	  .then((data) => {
-// 		const currentLoadoutHash = JSON.stringify(data?.Results?.[0]?.LoadOutInventory ?? {});
-// 		console.log('Current loadout hash:', currentLoadoutHash);
-// 		console.log('Last loadout hash:', lastLoadoutHash);
-// 		if (currentLoadoutHash !== lastLoadoutHash) {
-// 		  lastLoadoutHash = currentLoadoutHash;
-// 		  console.log('Loadout has been updated.');
-// 		  const raw = JSON.stringify({
-// 		  	"action": {
-// 		      "name": "WarframeChange"
-// 		  	}
-// 		  });
-// 		  fetch('http://192.168.31.141:7474/DoAction', {
-// 			method: 'POST',
-// 			headers: {
-// 			  'Content-Type': 'application/json'
-// 			},
-// 			body: raw
-// 		  })
-// 		  .then((response) => response.json())
-// 		  .then((data) => {
-// 			console.log('Action response:', data);
-// 		  })
-// 		  .catch((error) => {
-// 			console.error('Error sending action request:', error);
-// 		  });
-// 		}
-// 	})
-//   } else {
-// 	fetch(profileUrl)
-// 	  .then((response) => response.json())
-// 	  .then((data) => {
-// 		lastLoadoutHash = JSON.stringify(data?.Results?.[0]?.LoadOutInventory ?? {});
-// 		console.log('Current loadout hash:', lastLoadoutHash);
-// 		console.log('Initial loadout hash set.');
-// 	})
-//   }
+cron.schedule('*/15 * * * *', () => {
+	console.log('Checking for loadout updates...');
+	//check if loadout is have been updated from the last time, if yes then update it
+	if (lastLoadoutHash !== null) {
+		fetchWarframeApi(profileUrl, {
+			headers: { accept: 'application/json', 'user-agent': 'warframe-loadout-proxy/1.0' },
+		})
+			.then((response) => response.json())
+			.then((data) => {
+				const currentLoadoutHash = JSON.stringify(data?.Results?.[0]?.LoadOutInventory ?? {});
+				console.log('Current loadout hash:', currentLoadoutHash);
+				console.log('Last loadout hash:', lastLoadoutHash);
+				if (currentLoadoutHash !== lastLoadoutHash) {
+					lastLoadoutHash = currentLoadoutHash;
+					console.log('Loadout has been updated.');
+					const raw = JSON.stringify({
+						"action": {
+							"name": "WarframeChange"
+						}
+					});
+					fetch('http://192.168.31.141:7474/DoAction', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: raw
+					})
+						.then((response) => response.json())
+						.then((data) => {
+							console.log('Action response:', data);
+						})
+						.catch((error) => {
+							console.error('Error sending action request:', error);
+						});
+				}
+			})
+	} else {
+		fetchWarframeApi(profileUrl, {
+			headers: { accept: 'application/json', 'user-agent': 'warframe-loadout-proxy/1.0' },
+		})
+			.then((response) => response.json())
+			.then((data) => {
+				lastLoadoutHash = JSON.stringify(data?.Results?.[0]?.LoadOutInventory ?? {});
+				console.log('Current loadout hash:', lastLoadoutHash);
+				console.log('Initial loadout hash set.');
+			})
+	}
 });
 
 module.exports = app;
