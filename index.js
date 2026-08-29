@@ -345,7 +345,7 @@ app.get('/loadout', async (request, reply) => {
 });
 
 if (require.main === module) {
-	app.listen({ port: Number(process.env.PORT) || 3000, host: '0.0.0.0' })
+	app.listen({ port: Number(process.env.PORT) || 3000})
 		.catch((error) => {
 			app.log.error(error);
 			process.exit(1);
