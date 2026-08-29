@@ -342,7 +342,7 @@ app.get('/loadout', async (request, reply) => {
 });
 
 if (require.main === module) {
-	app.listen({ port: Number(process.env.PORT) || 3000, host: process.env.HOST || '0.0.0.0' })
+	app.listen({ port: Number(process.env.PORT) || 3000, host: '0.0.0.0' })
 		.catch((error) => {
 			app.log.error(error);
 			process.exit(1);
@@ -351,53 +351,53 @@ if (require.main === module) {
 
 let lastLoadoutHash = null;
 
-cron.schedule('*/15 * * * *', () => {
-	console.log('Checking for loadout updates...');
-	//check if loadout is have been updated from the last time, if yes then update it
-	if (lastLoadoutHash !== null) {
-		fetchWarframeApi(profileUrl, {
-			headers: { accept: 'application/json', 'user-agent': 'warframe-loadout-proxy/1.0' },
-		})
-			.then((response) => response.json())
-			.then((data) => {
-				const currentLoadoutHash = JSON.stringify(data?.Results?.[0]?.LoadOutInventory ?? {});
-				console.log('Current loadout hash:', currentLoadoutHash);
-				console.log('Last loadout hash:', lastLoadoutHash);
-				if (currentLoadoutHash !== lastLoadoutHash) {
-					lastLoadoutHash = currentLoadoutHash;
-					console.log('Loadout has been updated.');
-					const raw = JSON.stringify({
-						"action": {
-							"name": "WarframeChange"
-						}
-					});
-					fetch('http://192.168.31.141:7474/DoAction', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: raw
-					})
-						.then((response) => response.json())
-						.then((data) => {
-							console.log('Action response:', data);
-						})
-						.catch((error) => {
-							console.error('Error sending action request:', error);
-						});
-				}
-			})
-	} else {
-		fetchWarframeApi(profileUrl, {
-			headers: { accept: 'application/json', 'user-agent': 'warframe-loadout-proxy/1.0' },
-		})
-			.then((response) => response.json())
-			.then((data) => {
-				lastLoadoutHash = JSON.stringify(data?.Results?.[0]?.LoadOutInventory ?? {});
-				console.log('Current loadout hash:', lastLoadoutHash);
-				console.log('Initial loadout hash set.');
-			})
-	}
-});
+// cron.schedule('*/15 * * * *', () => {
+// 	console.log('Checking for loadout updates...');
+// 	//check if loadout is have been updated from the last time, if yes then update it
+// 	if (lastLoadoutHash !== null) {
+// 		fetchWarframeApi(profileUrl, {
+// 			headers: { accept: 'application/json', 'user-agent': 'warframe-loadout-proxy/1.0' },
+// 		})
+// 			.then((response) => response.json())
+// 			.then((data) => {
+// 				const currentLoadoutHash = JSON.stringify(data?.Results?.[0]?.LoadOutInventory ?? {});
+// 				console.log('Current loadout hash:', currentLoadoutHash);
+// 				console.log('Last loadout hash:', lastLoadoutHash);
+// 				if (currentLoadoutHash !== lastLoadoutHash) {
+// 					lastLoadoutHash = currentLoadoutHash;
+// 					console.log('Loadout has been updated.');
+// 					const raw = JSON.stringify({
+// 						"action": {
+// 							"name": "WarframeChange"
+// 						}
+// 					});
+// 					fetch('http://192.168.31.141:7474/DoAction', {
+// 						method: 'POST',
+// 						headers: {
+// 							'Content-Type': 'application/json'
+// 						},
+// 						body: raw
+// 					})
+// 						.then((response) => response.json())
+// 						.then((data) => {
+// 							console.log('Action response:', data);
+// 						})
+// 						.catch((error) => {
+// 							console.error('Error sending action request:', error);
+// 						});
+// 				}
+// 			})
+// 	} else {
+// 		fetchWarframeApi(profileUrl, {
+// 			headers: { accept: 'application/json', 'user-agent': 'warframe-loadout-proxy/1.0' },
+// 		})
+// 			.then((response) => response.json())
+// 			.then((data) => {
+// 				lastLoadoutHash = JSON.stringify(data?.Results?.[0]?.LoadOutInventory ?? {});
+// 				console.log('Current loadout hash:', lastLoadoutHash);
+// 				console.log('Initial loadout hash set.');
+// 			})
+// 	}
+// });
 
 module.exports = app;
