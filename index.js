@@ -30,7 +30,7 @@ function findImageUrl(value) {
 	return null;
 }
 
-const itemCatalogUrl = 'https://raw.githubusercontent.com/WFCD/warframe-items/refs/heads/master/data/json/All.json';
+const itemCatalogUrl = 'https://raw.githubusercontent.com/WFCD/warframe-items/refs/tags/v1.1275.74/data/json/All.json';
 const itemImageBaseUrl = 'https://raw.githubusercontent.com/wfcd/warframe-items/master/data/img/';
 const warframeApiProxyUrl = 'https://proxy.corsfix.com/?url=';
 const warframeApiProxyKey = process.env.WARFRAME_API_PROXY_KEY || '';
