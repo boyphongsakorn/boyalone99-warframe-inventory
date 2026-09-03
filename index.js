@@ -344,14 +344,6 @@ app.get('/loadout', async (request, reply) => {
 	return reply.send(Buffer.from(await imageResponse.arrayBuffer()));
 });
 
-if (require.main === module) {
-	app.listen({ port: Number(process.env.PORT) || 3000})
-		.catch((error) => {
-			app.log.error(error);
-			process.exit(1);
-		});
-}
-
 let lastLoadoutHash = null;
 
 // cron.schedule('*/15 * * * *', () => {
@@ -403,4 +395,23 @@ let lastLoadoutHash = null;
 // 	}
 // });
 
-module.exports = app;
+if (require.main === module) {
+	app.listen({ port: Number(process.env.PORT) || 3000})
+		.catch((error) => {
+			app.log.error(error);
+			process.exit(1);
+		});
+
+	module.exports = app;
+} else {
+	const start = async () => {
+		try {
+			await app.listen({ port: port, host: '0.0.0.0' })
+		} catch (err) {
+			app.log.error(err)
+			process.exit(1)
+		}
+	}
+
+	start()
+}
