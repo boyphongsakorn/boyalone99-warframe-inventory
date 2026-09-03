@@ -314,7 +314,7 @@ app.get('/loadout', async (request, reply) => {
 		return reply.code(502).send({ error: 'Warframe profile API returned invalid JSON' });
 	}
 
-	const wantsHtml = request.query.format === 'html' || (request.headers.accept || '').includes('text/html');
+	const wantsHtml = Object.prototype.hasOwnProperty.call(request.query, 'html');
 	if (wantsHtml) {
 		const profileResult = profile?.Results?.[0];
 		if (!profileResult || !profileResult.LoadOutPreset) {
@@ -324,24 +324,7 @@ app.get('/loadout', async (request, reply) => {
 		return reply.type('text/html; charset=utf-8').send(await buildLoadoutHtml(profileResult));
 	}
 
-	const imageUrl = findImageUrl(profile);
-	if (!imageUrl) {
-		return reply.code(404).send({ error: 'No loadout image was found in the profile response' });
-	}
-
-	let imageResponse;
-	try {
-		imageResponse = await fetch(imageUrl);
-	} catch (error) {
-		return reply.code(502).send({ error: 'Could not reach the loadout image URL', message: error.message });
-	}
-
-	if (!imageResponse.ok) {
-		return reply.code(502).send({ error: 'Loadout image URL returned an error', status: imageResponse.status });
-	}
-
-	reply.header('content-type', imageResponse.headers.get('content-type') || 'image/png');
-	return reply.send(Buffer.from(await imageResponse.arrayBuffer()));
+	return reply.send(profile);
 });
 
 let lastLoadoutHash = null;
