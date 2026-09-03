@@ -290,12 +290,12 @@ app.get('/loadout', async (request, reply) => {
 
 	let profileResponse;
 	try {
-		// profileResponse = await fetchWarframeApi(url.toString(), {
-		// 	headers: { accept: 'application/json', 'user-agent': 'warframe-loadout-proxy/1.0' },
-		// });
-		profileResponse = await fetch(url.toString(), {
+		profileResponse = await fetchWarframeApi(url.toString(), {
 			headers: { accept: 'application/json', 'user-agent': 'warframe-loadout-proxy/1.0' },
 		});
+		// profileResponse = await fetch(url.toString(), {
+		// 	headers: { accept: 'application/json', 'user-agent': 'warframe-loadout-proxy/1.0' },
+		// });
 	} catch (error) {
 		return reply.code(502).send({ error: 'Could not reach the Warframe profile API', message: error.message });
 	}
