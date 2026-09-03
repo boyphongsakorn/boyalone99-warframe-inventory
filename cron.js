@@ -2,6 +2,8 @@ const cron = require('node-cron');
 
 const profileUrl = 'https://boyalone99-warframe-inventory.vercel.app/loadout';
 
+let lastLoadoutHash = null;
+
 cron.schedule('*/5 * * * *', () => {
 	console.log('Checking for loadout updates...');
 	//check if loadout is have been updated from the last time, if yes then update it
