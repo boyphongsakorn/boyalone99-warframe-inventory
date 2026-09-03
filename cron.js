@@ -31,7 +31,13 @@ cron.schedule('*/5 * * * *', () => {
 						},
 						body: raw
 					})
-						.then((response) => response.json())
+						.then(async (response) => {
+							const text = await response.text();
+							if (!response.ok) {
+								throw new Error(`HTTP ${response.status}: ${text}`);
+							}
+							return text ? JSON.parse(text) : null;
+						})
 						.then((data) => {
 							console.log('Action response:', data);
 						})
