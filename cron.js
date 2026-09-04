@@ -8,7 +8,13 @@ cron.schedule('*/5 * * * *', async () => {
 	console.log('Checking for loadout updates...');
 	//check if loadout is have been updated from the last time, if yes then update it
 	const twitchstatus = await fetch('https://localpost.teamquadb.in.th/twitchstatus')
-	const twitchstatusjson = await twitchstatus.json()
+	const twitchstatusText = await twitchstatus.text();
+	let twitchstatusjson;
+	try {
+		twitchstatusjson = JSON.parse(twitchstatusText);
+	} catch {
+		twitchstatusjson = { game_name: null };
+	}
 	//if just text offline then do nothing or game is not Warframe then do nothing
 	if (twitchstatusjson.game_name !== 'Warframe') {
 		console.log('Twitch is offline or game is not Warframe. Skipping loadout check.');
